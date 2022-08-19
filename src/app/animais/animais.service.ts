@@ -44,4 +44,21 @@ export class AnimaisService {
         return error.status === NOT_MODIFIED ? of(false) : throwError(error);
       }));
   }
+
+  upload(descricao: string, permiteComentario: boolean, arquivo: File){
+    //enviar o arquivo pelo HttpClient -> vou empacotar ele num objeto JS(nao Angular) chamado FormData
+    //E esse Form Data permite a gente incluir arquivos binários na nossa requisição
+    const formData = new FormData();
+    //Vou usar esse objeto para enviar a foto.
+    formData.append('description', descricao);
+    formData.append('allowComments', permiteComentario ? 'true' : 'false');
+    formData.append('imageFile', arquivo); //vamos enviar no body da requisição
+
+    //retornar um observable
+    return this.http.post(`${API}/photos/upload`, formData, {
+      observe: 'events',
+      reportProgress: true
+    });
+  }
+
 }
