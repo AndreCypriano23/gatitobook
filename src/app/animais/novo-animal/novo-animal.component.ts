@@ -1,4 +1,9 @@
+import { HttpEvent, HttpEventType } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { finalize } from 'rxjs/operators';
+import { AnimaisService } from '../animais.service';
 
 @Component({
   selector: 'app-novo-animal',
@@ -7,9 +12,46 @@ import { Component, OnInit } from '@angular/core';
 })
 export class NovoAnimalComponent implements OnInit {
 
-  constructor() { }
+  //Será Formulário do tipo reativo
+  formularioAnimal!: FormGroup;
+  //arquivo que vou subir da foto
+  file!: File;
+  preview!: string; //Exclamação porque vou atribuí-la depois
+  percentualConcluido = 0;
+
+  constructor(private animaisService: AnimaisService,
+              private formBuilder: FormBuilder,
+              private router: Router) { }
 
   ngOnInit(): void {
+    this.formularioAnimal = this.formBuilder.group({
+      file: ['', Validators.required],
+      description: ['', Validators.maxLength(300)],
+      allowComments: [true]
+    })
+  }
+
+  upload(){
+    const allowComments = this.formularioAnimal.get('allowComments')?.value ?? false;
+    const description = this.formularioAnimal.get('description')?.value ?? '';
+
+    this.animaisService.upload(description, allowComments, this.file).pipe(
+      finalize( ()=> this.router.navigate(['animais']))
+    ).subscribe((event: HttpEvent<any>) => {
+      if(event.type == HttpEventType.UploadProgress){
+        const total = event.total ?? 1;//se nao for nada é igual a 1 pq já estará completo
+        this.percentualConcluido = Math.round(100*(event.loaded / total));
+      }
+    }, (error) => console.log(error));  //fiz um pipe pq o upload nao vai me trazer o observable já concluído, a cada passo da requisição ele vai me devolver o que vou ter que ler esse observable
+  }
+
+  gravaArquivo(arquivo: any): void{
+    //grava o arquivo para poder fazer o preview
+    const file = arquivo?.files[0]; //vou pegar o primeiro elemento, arquivo
+    this.file = file;
+    const reader = new FileReader();
+    reader.onload = (event: any) => (this.preview = event.target.result);
+    reader.readAsDataURL(file);//com isso sobe e faz o preview da foto
   }
 
 }
